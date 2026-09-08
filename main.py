@@ -13,7 +13,7 @@ DAY_MAP = {
 }
 
 def generate_ics(group: str, subgroup: int, category: str):
-    # Текущая учебная неделя БГУИР
+    # Номер текущей недели (1..4)
     try:
         cw_res = requests.get("https://iis.bsuir.by/api/v1/schedule/current-week", timeout=5)
         current_week = int(cw_res.text.strip())
@@ -54,7 +54,7 @@ def generate_ics(group: str, subgroup: int, category: str):
 
                 l_type = (lesson.get("lessonTypeAbbrev") or "").strip().upper()
 
-                # Фильтрация по типу занятия
+                # Фильтрация по типу
                 if category == "lectures" and "ЛК" not in l_type:
                     continue
                 elif category == "labs" and "ЛР" not in l_type:
@@ -76,9 +76,8 @@ def generate_ics(group: str, subgroup: int, category: str):
                 subject = lesson.get("subject", "Занятие")
                 auds = ", ".join(lesson.get("auditories", []))
 
-                # Формируем полное ФИО (Фамилия Имя Отчество)
+                # Полное ФИО преподавателей
                 full_teachers = []
-                short_teachers = []
                 for t in lesson.get("employees", []):
                     last_name = t.get("lastName", "").strip()
                     first_name = t.get("firstName", "").strip()
@@ -87,13 +86,11 @@ def generate_ics(group: str, subgroup: int, category: str):
                     full_name = f"{last_name} {first_name} {middle_name}".strip()
                     if full_name:
                         full_teachers.append(full_name)
-                    if last_name:
-                        short_teachers.append(last_name)
 
                 event = Event()
-                
-                # Формируем заголовок пары
-                summary = f"[{l_type}] {subject}"
+
+                # Название без [ЛК] / [ЛР] / [ПЗ]
+                summary = subject
                 if auds:
                     summary += f" ({auds})"
 
@@ -105,7 +102,7 @@ def generate_ics(group: str, subgroup: int, category: str):
                 clean_subj = "".join(c for c in subject if c.isalnum())[:10]
                 event.add("uid", f"{group}_{sub}_{day_date}_{sh}{sm}_{clean_subj}@bsuir")
 
-                # Подробное описание
+                # Описание
                 desc = [f"Тип: {l_type}", f"Предмет: {subject}"]
                 if full_teachers:
                     desc.append(f"Преподаватель: {', '.join(full_teachers)}")
