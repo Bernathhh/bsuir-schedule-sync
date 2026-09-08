@@ -33,7 +33,7 @@ def generate_ics(group: str, subgroup: int, category: str):
     today = datetime.date.today()
     monday = today - datetime.timedelta(days=today.weekday())
 
-    # Генерируем на 8 недель вперед (хватает с головой для авто-синка)
+    # Генерируем на 8 недель вперед
     for week_offset in range(8):
         week_start = monday + datetime.timedelta(weeks=week_offset)
         week_num = ((current_week - 1 + week_offset) % 4) + 1
@@ -76,7 +76,23 @@ def generate_ics(group: str, subgroup: int, category: str):
                 subject = lesson.get("subject", "Занятие")
                 auds = ", ".join(lesson.get("auditories", []))
 
+                # Формируем полное ФИО (Фамилия Имя Отчество)
+                full_teachers = []
+                short_teachers = []
+                for t in lesson.get("employees", []):
+                    last_name = t.get("lastName", "").strip()
+                    first_name = t.get("firstName", "").strip()
+                    middle_name = t.get("middleName", "").strip()
+                    
+                    full_name = f"{last_name} {first_name} {middle_name}".strip()
+                    if full_name:
+                        full_teachers.append(full_name)
+                    if last_name:
+                        short_teachers.append(last_name)
+
                 event = Event()
+                
+                # Формируем заголовок пары
                 summary = f"[{l_type}] {subject}"
                 if auds:
                     summary += f" ({auds})"
@@ -85,14 +101,14 @@ def generate_ics(group: str, subgroup: int, category: str):
                 event.add("dtstart", start_dt)
                 event.add("dtend", end_dt)
 
-                # Стабильный UID критически важен, чтобы iOS не создавала дубли при обновлении
+                # UID
                 clean_subj = "".join(c for c in subject if c.isalnum())[:10]
                 event.add("uid", f"{group}_{sub}_{day_date}_{sh}{sm}_{clean_subj}@bsuir")
 
-                teachers = [f"{t.get('lastName', '')} {t.get('firstName', '')}" for t in lesson.get("employees", [])]
+                # Подробное описание
                 desc = [f"Тип: {l_type}", f"Предмет: {subject}"]
-                if teachers:
-                    desc.append(f"Преподаватель: {', '.join(teachers)}")
+                if full_teachers:
+                    desc.append(f"Преподаватель: {', '.join(full_teachers)}")
                 desc.append(f"Подгруппа: {sub if sub != 0 else 'Вся группа'}")
                 desc.append(f"Неделя: {week_num}")
                 event.add("description", "\n".join(desc))
